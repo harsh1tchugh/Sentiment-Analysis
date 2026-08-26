@@ -1,0 +1,748 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>AI Product Review Sentiment Analyzer</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<style>
+  :root {
+    --purple-500: #a855f7;
+    --purple-600: #9333ea;
+    --purple-700: #7e22ce;
+    --pink-500: #ec4899;
+    --shadow-xl: 0 25px 35px -5px rgba(0,0,0,0.3), 0 10px 15px -5px rgba(0,0,0,0.2);
+  }
+
+  *, *::before, *::after { box-sizing: border-box; }
+
+  body {
+    font-family: 'Inter', sans-serif;
+    background: #090514;
+    min-height: 100vh;
+    overflow-x: hidden;
+    color: #e4e4e7;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* Orbs */
+  .bg-orb {
+    position: fixed;
+    border-radius: 50%;
+    filter: blur(120px);
+    pointer-events: none;
+    z-index: 0;
+  }
+  .bg-orb-1 {
+    width: 600px; height: 600px;
+    background: rgba(139, 92, 246, 0.25);
+    top: -10%; left: -10%;
+    animation: orb-float-1 25s ease-in-out infinite alternate;
+  }
+  .bg-orb-2 {
+    width: 500px; height: 500px;
+    background: rgba(236, 72, 153, 0.15);
+    bottom: -10%; right: -5%;
+    animation: orb-float-2 20s ease-in-out infinite alternate;
+  }
+  @keyframes orb-float-1 {
+    0%   { transform: translate(0, 0) scale(1); }
+    100% { transform: translate(100px, 100px) scale(1.1); }
+  }
+  @keyframes orb-float-2 {
+    0%   { transform: translate(0, 0) scale(1); }
+    100% { transform: translate(-80px, -80px) scale(1.15); }
+  }
+
+  .mouse-orb {
+    width: 400px; height: 400px;
+    background: radial-gradient(circle, rgba(168, 85, 247, 0.15), transparent 70%);
+    position: fixed;
+    pointer-events: none;
+    z-index: 0;
+    transform: translate(-50%, -50%);
+    transition: left 0.15s ease-out, top 0.15s ease-out;
+  }
+
+  .page-wrapper {
+    position: relative;
+    z-index: 1;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 4rem 1rem;
+    gap: 2rem;
+  }
+
+  /* Shared Card Styles */
+  .main-card {
+    background: linear-gradient(145deg, rgba(25, 20, 45, 0.6), rgba(15, 10, 25, 0.8));
+    backdrop-filter: blur(40px) saturate(200%);
+    -webkit-backdrop-filter: blur(40px) saturate(200%);
+    border-radius: 28px;
+    box-shadow: var(--shadow-xl), 0 0 80px rgba(139, 92, 246, 0.1);
+    padding: 3.5rem 3rem;
+    width: 100%;
+    max-width: 800px;
+    position: relative;
+    animation: card-enter 0.8s cubic-bezier(0.16, 1, 0.3, 1) both;
+    transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.4s ease;
+  }
+  
+  .main-card::before {
+    content: '';
+    position: absolute;
+    inset: -2px;
+    border-radius: 30px;
+    background: linear-gradient(60deg, var(--purple-500), var(--pink-500), var(--purple-600), #3b82f6);
+    background-size: 300% 300%;
+    z-index: -1;
+    animation: border-gradient 6s ease infinite;
+    opacity: 0.3;
+    transition: opacity 0.4s ease;
+  }
+
+  .main-card:hover {
+    transform: translateY(-8px) scale(1.01);
+    box-shadow: var(--shadow-xl), 0 20px 80px rgba(168, 85, 247, 0.2);
+  }
+  .main-card:hover::before { opacity: 0.8; }
+
+  @keyframes border-gradient {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+  }
+  @keyframes card-enter {
+    from { opacity: 0; transform: translateY(40px) scale(0.95); }
+    to   { opacity: 1; transform: translateY(0) scale(1); }
+  }
+
+  /* Sentiment Analyzer Specifics */
+  .logo-badge {
+    width: 72px; height: 72px;
+    margin: 0 auto 1.5rem;
+    background: linear-gradient(135deg, var(--purple-500), var(--pink-500));
+    border-radius: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2rem;
+    box-shadow: 0 10px 30px rgba(236, 72, 153, 0.4);
+    animation: badge-pop 0.6s 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+    transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s ease;
+    cursor: pointer;
+  }
+  .logo-badge:hover {
+    transform: scale(1.15) rotate(8deg);
+    box-shadow: 0 15px 40px rgba(168, 85, 247, 0.6);
+  }
+  @keyframes badge-pop {
+    from { opacity: 0; transform: scale(0.3) rotate(-20deg); }
+    to   { opacity: 1; transform: scale(1) rotate(0deg); }
+  }
+
+  .app-title {
+    font-size: 2rem;
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    margin-bottom: 0.5rem;
+    background: linear-gradient(to right, #fff, #a1a1aa);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .app-subtitle {
+    font-size: 1rem;
+    color: #a1a1aa;
+    font-weight: 500;
+    margin-bottom: 2.5rem;
+  }
+
+  .divider {
+    height: 1px;
+    background: linear-gradient(to right, transparent, rgba(168, 85, 247, 0.3), transparent);
+    margin: 2rem 0;
+  }
+
+  .field-label {
+    display: block;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #e4e4e7;
+    margin-bottom: 0.75rem;
+    letter-spacing: 0.02em;
+  }
+
+  .review-textarea {
+    width: 100%;
+    min-height: 180px;
+    padding: 1.25rem;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 16px;
+    background: rgba(10, 5, 20, 0.5);
+    font-family: inherit;
+    font-size: 1rem;
+    line-height: 1.6;
+    color: #ffffff;
+    resize: vertical;
+    transition: all 0.3s ease;
+    outline: none;
+    box-shadow: inset 0 2px 4px rgba(0,0,0,0.2);
+  }
+  .review-textarea::placeholder { color: #71717a; }
+  .review-textarea:hover {
+    border-color: rgba(168, 85, 247, 0.4);
+    background: rgba(10, 5, 20, 0.7);
+  }
+  .review-textarea:focus {
+    border-color: var(--pink-500);
+    box-shadow: inset 0 2px 4px rgba(0,0,0,0.2), 0 0 0 4px rgba(236, 72, 153, 0.2);
+    background: rgba(15, 10, 30, 0.9);
+    transform: translateY(-2px);
+  }
+
+  .char-count {
+    font-size: 0.8rem;
+    color: #71717a;
+    text-align: right;
+    margin-top: 0.5rem;
+    font-variant-numeric: tabular-nums;
+    transition: color 0.3s;
+  }
+  .char-count.has-text { color: var(--pink-500); }
+
+  .btn-group-custom {
+    display: flex;
+    gap: 1rem;
+    margin-top: 1.5rem;
+  }
+  
+  .btn-predict, .btn-clear {
+    flex: 1;
+    padding: 1rem 1.5rem;
+    border-radius: 14px;
+    font-size: 1rem;
+    font-weight: 700;
+    cursor: pointer;
+    border: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .btn-predict {
+    background: linear-gradient(135deg, var(--purple-600), var(--pink-500));
+    color: #fff;
+    box-shadow: 0 4px 15px rgba(236, 72, 153, 0.3);
+  }
+  .btn-predict::before {
+    content: '';
+    position: absolute; inset: 0;
+    background: linear-gradient(135deg, var(--pink-500), var(--purple-500));
+    opacity: 0; transition: opacity 0.3s ease;
+  }
+  .btn-predict:hover {
+    transform: translateY(-4px) scale(1.02);
+    box-shadow: 0 12px 30px rgba(236, 72, 153, 0.5);
+  }
+  .btn-predict:hover::before { opacity: 1; }
+  .btn-predict:active { transform: translateY(0) scale(0.98); }
+  .btn-predict span { position: relative; z-index: 1; }
+
+  .btn-clear {
+    background: rgba(255, 255, 255, 0.05);
+    color: #e4e4e7;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+  }
+  .btn-clear:hover {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.2);
+    transform: translateY(-4px);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.2);
+  }
+  .btn-clear:active { transform: translateY(0); }
+
+  .result-banner {
+    margin-top: 2rem;
+    padding: 1.25rem 1.5rem;
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    font-weight: 600;
+    font-size: 1rem;
+    animation: result-slide 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+  }
+  .result-banner:hover {
+    transform: translateY(-3px) scale(1.01);
+  }
+  @keyframes result-slide {
+    from { opacity: 0; transform: translateY(20px) scale(0.95); }
+    to   { opacity: 1; transform: translateY(0) scale(1); }
+  }
+  .result-banner .result-icon {
+    width: 48px; height: 48px;
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    flex-shrink: 0;
+  }
+  .result-positive {
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.15), rgba(5, 150, 105, 0.05));
+    border: 1px solid rgba(16, 185, 129, 0.3);
+    color: #a7f3d0;
+    box-shadow: 0 10px 30px rgba(16, 185, 129, 0.1);
+  }
+  .result-positive .result-icon { background: rgba(16, 185, 129, 0.2); }
+  .result-negative {
+    background: linear-gradient(135deg, rgba(239, 68, 68, 0.15), rgba(220, 38, 38, 0.05));
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    color: #fecaca;
+    box-shadow: 0 10px 30px rgba(239, 68, 68, 0.1);
+  }
+  .result-negative .result-icon { background: rgba(239, 68, 68, 0.2); }
+
+  .creator-section { margin-top: 3rem; text-align: center; }
+  .creator-avatar {
+    width: 80px; height: 80px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--pink-500), var(--purple-500));
+    margin: 0 auto 1rem;
+    padding: 3px;
+    box-shadow: 0 8px 25px rgba(236, 72, 153, 0.3);
+    transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  .creator-avatar img {
+    width: 100%; height: 100%;
+    object-fit: cover;
+    border-radius: 50%;
+    border: 3px solid #1a1528;
+  }
+  .creator-avatar:hover { transform: scale(1.15) rotate(5deg); }
+  
+  .creator-name { font-size: 1.1rem; font-weight: 700; color: #fff; margin-bottom: 0.25rem; }
+  .creator-role { font-size: 0.85rem; color: #a1a1aa; margin-bottom: 1.25rem; }
+  
+  .social-links { display: flex; justify-content: center; gap: 1rem; flex-wrap: wrap; }
+  .social-link {
+    display: inline-flex; align-items: center; gap: 0.5rem;
+    padding: 0.6rem 1.25rem;
+    border-radius: 12px;
+    font-size: 0.875rem; font-weight: 600;
+    text-decoration: none;
+    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.05);
+    color: #e4e4e7;
+  }
+  .social-link:hover { transform: translateY(-5px); color: #fff; }
+  .social-link.linkedin:hover { background: #0a66c2; border-color: #0a66c2; box-shadow: 0 8px 20px rgba(10,102,194,0.4); }
+  .social-link.github:hover { background: #27272a; border-color: #52525b; box-shadow: 0 8px 20px rgba(255,255,255,0.1); }
+  .social-link.gmail:hover { background: #ea4335; border-color: #ea4335; box-shadow: 0 8px 20px rgba(234,67,53,0.4); }
+
+  /* Feedback Card Specifics */
+  .feedback-card {
+    animation: card-enter 0.8s 0.15s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+  .feedback-card::before {
+    background: linear-gradient(60deg, #3b82f6, var(--pink-500), var(--purple-500), var(--purple-600));
+    animation: border-gradient 8s ease infinite;
+    opacity: 0.25;
+  }
+  .feedback-card:hover::before { opacity: 0.7; }
+  
+  .feedback-card .section-title {
+    display: flex; align-items: center; gap: 0.6rem;
+    font-size: 1.25rem; font-weight: 700; color: #fff; margin-bottom: 0.5rem;
+  }
+  .feedback-card .section-subtitle {
+    font-size: 0.9rem; color: #a1a1aa; margin-bottom: 1.75rem; line-height: 1.5;
+  }
+
+  .form-row { display: flex; gap: 1rem; margin-bottom: 1rem; }
+  .form-group { flex: 1; display: flex; flex-direction: column; }
+  .form-group label {
+    font-size: 0.8rem; font-weight: 600; color: #a1a1aa; margin-bottom: 0.5rem; transition: color 0.3s ease;
+  }
+  .form-group:focus-within label { color: var(--pink-500); }
+
+  .form-input, .form-select {
+    padding: 0.875rem 1.125rem;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 14px;
+    background: rgba(10, 5, 20, 0.6);
+    font-family: inherit; font-size: 0.9375rem; color: #e4e4e7;
+    outline: none;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.15);
+  }
+  .form-input::placeholder { color: #52525b; }
+  .form-input:hover, .form-select:hover {
+    border-color: rgba(168, 85, 247, 0.35);
+    background: rgba(15, 10, 30, 0.7);
+    transform: translateY(-2px);
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.15), 0 4px 12px rgba(0, 0, 0, 0.2);
+  }
+  .form-input:focus, .form-select:focus {
+    border-color: var(--pink-500);
+    background: rgba(15, 10, 30, 0.9);
+    transform: translateY(-2px);
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.15), 0 0 0 4px rgba(236, 72, 153, 0.15);
+  }
+
+  .form-select {
+    -webkit-appearance: none; -moz-appearance: none; appearance: none; cursor: pointer;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' fill='%2371717a' viewBox='0 0 16 16'%3E%3Cpath d='M8 11L3 6h10l-5 5z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right 1rem center; padding-right: 2.5rem;
+  }
+  .form-select option { background: #1a1528; color: #e4e4e7; }
+
+  .form-textarea {
+    width: 100%; min-height: 120px;
+    padding: 1rem 1.125rem;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 14px;
+    background: rgba(10, 5, 20, 0.6);
+    font-family: inherit; font-size: 0.9375rem; line-height: 1.7; color: #e4e4e7;
+    resize: vertical; outline: none;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    margin-bottom: 1rem;
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.15);
+  }
+  .form-textarea::placeholder { color: #52525b; }
+  .form-textarea:hover {
+    border-color: rgba(168, 85, 247, 0.35); background: rgba(15, 10, 30, 0.7);
+    transform: translateY(-2px);
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.15), 0 4px 12px rgba(0, 0, 0, 0.2);
+  }
+  .form-textarea:focus {
+    border-color: var(--pink-500); background: rgba(15, 10, 30, 0.9);
+    transform: translateY(-2px);
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.15), 0 0 0 4px rgba(236, 72, 153, 0.15);
+  }
+
+  .rating-group { display: flex; gap: 0.5rem; margin-bottom: 1.25rem; }
+  .rating-star {
+    width: 44px; height: 44px; border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(10, 5, 20, 0.6);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.25rem; cursor: pointer;
+    transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+    color: #52525b; box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.15);
+  }
+  .rating-star:hover {
+    border-color: rgba(234, 179, 8, 0.5); background: rgba(234, 179, 8, 0.1);
+    transform: scale(1.2) rotate(12deg); box-shadow: 0 4px 15px rgba(234, 179, 8, 0.25);
+  }
+  .rating-star.active {
+    border-color: rgba(234, 179, 8, 0.6);
+    background: linear-gradient(135deg, rgba(234, 179, 8, 0.2), rgba(251, 191, 36, 0.1));
+    color: #facc15; box-shadow: 0 0 20px rgba(234, 179, 8, 0.35); transform: scale(1.05);
+  }
+
+  .btn-submit-feedback {
+    width: 100%; padding: 1rem 1.5rem; border-radius: 14px;
+    font-family: inherit; font-size: 1rem; font-weight: 700; cursor: pointer; border: none;
+    background: linear-gradient(135deg, var(--purple-600), var(--pink-500));
+    color: #fff; box-shadow: 0 4px 20px rgba(147, 51, 234, 0.35);
+    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    display: flex; align-items: center; justify-content: center; gap: 0.5rem;
+    position: relative; overflow: hidden;
+  }
+  .btn-submit-feedback::before {
+    content: ''; position: absolute; inset: 0;
+    background: linear-gradient(135deg, var(--pink-500), var(--purple-500));
+    opacity: 0; transition: opacity 0.3s ease; border-radius: inherit;
+  }
+  .btn-submit-feedback:hover {
+    transform: translateY(-4px) scale(1.02); box-shadow: 0 12px 35px rgba(236, 72, 153, 0.5);
+  }
+  .btn-submit-feedback:hover::before { opacity: 1; }
+  .btn-submit-feedback:active { transform: translateY(0) scale(0.98); box-shadow: 0 4px 15px rgba(147, 51, 234, 0.3); }
+  .btn-submit-feedback span { position: relative; z-index: 2; display: flex; align-items: center; gap: 0.5rem; }
+
+  .feedback-success, .feedback-error {
+    display: none; margin-top: 1.25rem; padding: 1.125rem 1.25rem; border-radius: 14px;
+    font-weight: 600; font-size: 0.9375rem; text-align: center;
+    animation: result-slide 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both; line-height: 1.5;
+  }
+  .feedback-success {
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.15), rgba(5, 150, 105, 0.05));
+    border: 1px solid rgba(16, 185, 129, 0.3); color: #a7f3d0; box-shadow: 0 8px 25px rgba(16, 185, 129, 0.15);
+  }
+  .feedback-error {
+    background: linear-gradient(135deg, rgba(239, 68, 68, 0.15), rgba(220, 38, 38, 0.05));
+    border: 1px solid rgba(239, 68, 68, 0.3); color: #fecaca; box-shadow: 0 8px 25px rgba(239, 68, 68, 0.15);
+    word-break: break-word;
+  }
+  .feedback-success.show, .feedback-error.show { display: block; }
+
+  .app-footer {
+    text-align: center; margin-top: 2rem; padding-top: 1.5rem;
+    border-top: 1px solid rgba(168, 85, 247, 0.15); font-size: 0.8rem; color: #52525b;
+  }
+
+  @media (max-width: 768px) {
+    .main-card { padding: 2.5rem 1.5rem; border-radius: 24px; }
+    .btn-group-custom { flex-direction: column; }
+    .form-row { flex-direction: column; }
+    .app-title { font-size: 1.6rem; }
+    .social-link { padding: 0.5rem 0.875rem; font-size: 0.8rem; }
+  }
+</style>
+</head>
+<body>
+
+<div class="bg-orb bg-orb-1"></div>
+<div class="bg-orb bg-orb-2"></div>
+<div class="mouse-orb" id="mouseOrb"></div>
+
+<div class="page-wrapper">
+  
+  <!-- MAIN SENTIMENT CARD -->
+  <div class="main-card">
+    <div class="logo-badge">🧠</div>
+    <h1 class="app-title text-center">Sentiment Analyzer</h1>
+    <p class="app-subtitle text-center">
+      Paste a product review and get an instant AI-powered verdict
+    </p>
+
+    <div class="divider"></div>
+
+    <form method="POST">
+      <label class="field-label" for="review">Product Review</label>
+      <textarea
+        id="review"
+        name="review"
+        rows="6"
+        class="review-textarea"
+        placeholder="e.g. This phone is amazing! Battery backup is excellent and the camera quality blew me away…"
+      >{{ review_text }}</textarea>
+      <div class="char-count" id="charCount"></div>
+
+      <div class="btn-group-custom">
+        <button type="submit" class="btn-predict">
+          <span>✨ Analyze Review</span>
+        </button>
+        <a href="/" class="btn-clear">Clear</a>
+      </div>
+    </form>
+
+    {% if result %}
+      <div class="result-banner {{ 'result-positive' if result == 'positive' else 'result-negative' }}">
+        <div class="result-icon">
+          {{ '😊' if result == 'positive' else '😞' }}
+        </div>
+        <div class="result-text">
+          {{ 'Positive' if result == 'positive' else 'Negative' }} Review Detected
+          {% if confidence %}
+            <span style="display:block; font-size:0.85rem; opacity:0.8; margin-top:0.25rem;">{{ confidence }}% confidence</span>
+          {% endif %}
+        </div>
+      </div>
+    {% endif %}
+
+    <div class="creator-section">
+      <div class="divider"></div>
+      <div class="creator-avatar">
+        <img src="static/profile.jpg" alt="Harshit Chugh">
+      </div>
+      <div class="creator-name">Harshit Chugh</div>
+      <div class="creator-role">Data Science Enthusiast</div>
+      <div class="social-links">
+        <a href="https://www.linkedin.com/in/harshit-chugh-208669372/" target="_blank" rel="noopener noreferrer" class="social-link linkedin">
+          <i class="fab fa-linkedin-in"></i> LinkedIn
+        </a>
+        <a href="https://github.com/harsh1tchugh" target="_blank" rel="noopener noreferrer" class="social-link github">
+          <i class="fab fa-github"></i> GitHub
+        </a>
+        <a href="https://mail.google.com/mail/?view=cm&fs=1&to=harshittrix@gmail.com" target="_blank" rel="noopener noreferrer" class="social-link gmail">
+          <i class="fas fa-envelope"></i> Gmail
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- FEEDBACK CARD -->
+  <div class="feedback-card main-card">
+    <div class="section-title">💬 Feedback &amp; Support</div>
+    <div class="section-subtitle">Have a suggestion, found a bug, or just want to say hi? Let us know!</div>
+
+    <form id="feedbackForm" onsubmit="return handleFeedback(event)">
+      <div class="form-row">
+        <div class="form-group">
+          <label for="fbName">Name</label>
+          <input type="text" id="fbName" class="form-input" placeholder="Your name" required>
+        </div>
+        <div class="form-group">
+          <label for="fbEmail">Email</label>
+          <input type="email" id="fbEmail" class="form-input" placeholder="you@example.com" required>
+        </div>
+      </div>
+
+      <div class="form-group" style="margin-bottom: 1rem;">
+        <label for="fbType">Feedback Type</label>
+        <select id="fbType" class="form-select" required>
+          <option value="" disabled selected>Select type…</option>
+          <option value="bug">🐛 Bug Report</option>
+          <option value="feature">💡 Feature Request</option>
+          <option value="improvement">🚀 Improvement</option>
+          <option value="general">💬 General Feedback</option>
+        </select>
+      </div>
+
+      <label style="font-size: 0.8rem; font-weight: 600; color: #a1a1aa; display: block; margin-bottom: 0.5rem;">
+        Rate your experience
+      </label>
+      <div class="rating-group" id="ratingGroup">
+        <div class="rating-star" data-value="1">⭐</div>
+        <div class="rating-star" data-value="2">⭐</div>
+        <div class="rating-star" data-value="3">⭐</div>
+        <div class="rating-star" data-value="4">⭐</div>
+        <div class="rating-star" data-value="5">⭐</div>
+      </div>
+
+      <label style="font-size: 0.8rem; font-weight: 600; color: #a1a1aa; display: block; margin-bottom: 0.5rem;">
+        Your message
+      </label>
+      <textarea class="form-textarea" id="fbMessage" placeholder="Tell us what you think…" required></textarea>
+
+      <button type="submit" class="btn-submit-feedback">
+        <span>📨 Send Feedback</span>
+      </button>
+    </form>
+
+    <div class="feedback-success" id="feedbackSuccess">
+      ✅ Thank you for your feedback! We truly appreciate it.
+    </div>
+    <div class="feedback-error" id="feedbackError">
+      <span id="feedbackErrorMsg">⚠️ Something went wrong. Please try again.</span>
+    </div>
+    
+    <div class="app-footer">
+      <span>Follow</span> &middot; <span>Support</span> &middot; <span>Contact</span>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  // Mouse Orb
+  const mouseOrb = document.getElementById('mouseOrb');
+  document.addEventListener('mousemove', function(e) {
+    mouseOrb.style.left = e.clientX + 'px';
+    mouseOrb.style.top = e.clientY + 'px';
+  });
+
+  // Char count
+  var textarea = document.getElementById('review');
+  var charCount = document.getElementById('charCount');
+  if (textarea && charCount) {
+    function updateCount() {
+      var len = textarea.value.length;
+      charCount.textContent = len > 0 ? len + ' characters' : '';
+      charCount.classList.toggle('has-text', len > 0);
+    }
+    textarea.addEventListener('input', updateCount);
+    updateCount();
+  }
+
+  // Star Rating
+  var selectedRating = 0;
+  var ratingStars = document.querySelectorAll('.rating-star');
+  ratingStars.forEach(function(star) {
+    star.addEventListener('click', function() {
+      selectedRating = parseInt(star.getAttribute('data-value'));
+      updateStars();
+    });
+    star.addEventListener('mouseenter', function() {
+      var val = parseInt(star.getAttribute('data-value'));
+      ratingStars.forEach(function(s) {
+        if (parseInt(s.getAttribute('data-value')) <= val) {
+          s.classList.add('active');
+        } else {
+          s.classList.remove('active');
+        }
+      });
+    });
+  });
+  document.getElementById('ratingGroup').addEventListener('mouseleave', updateStars);
+  function updateStars() {
+    ratingStars.forEach(function(s) {
+      if (parseInt(s.getAttribute('data-value')) <= selectedRating) {
+        s.classList.add('active');
+      } else {
+        s.classList.remove('active');
+      }
+    });
+  }
+
+  // Handle Feedback Submission
+  function handleFeedback(e) {
+    e.preventDefault();
+    var submitBtn = document.querySelector('.btn-submit-feedback span');
+    var successBox = document.getElementById('feedbackSuccess');
+    var errorBox = document.getElementById('feedbackError');
+    var errorMsg = document.getElementById('feedbackErrorMsg');
+    
+    successBox.classList.remove('show');
+    errorBox.classList.remove('show');
+
+    var payload = {
+      name: document.getElementById('fbName').value,
+      email: document.getElementById('fbEmail').value,
+      type: document.getElementById('fbType').value,
+      rating: selectedRating,
+      message: document.getElementById('fbMessage').value
+    };
+
+    submitBtn.textContent = 'Sending…';
+    var submitBtnEl = document.querySelector('.btn-submit-feedback');
+    submitBtnEl.disabled = true;
+
+    fetch('/submit-feedback', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    })
+      .then(function(res) {
+        return res.json().then(function(data) { return { ok: res.ok, data: data }; });
+      })
+      .then(function(result) {
+        if (result.ok && result.data.ok) {
+          document.getElementById('feedbackForm').style.display = 'none';
+          successBox.classList.add('show');
+        } else {
+          var msg = (result.data && result.data.error) ? result.data.error : 'Unknown error';
+          errorMsg.textContent = '⚠️ ' + msg;
+          errorBox.classList.add('show');
+          submitBtnEl.disabled = false;
+          submitBtn.textContent = '📨 Send Feedback';
+        }
+      })
+      .catch(function(err) {
+        errorMsg.textContent = '⚠️ Could not connect to server. Please try again.';
+        errorBox.classList.add('show');
+        submitBtnEl.disabled = false;
+        submitBtn.textContent = '📨 Send Feedback';
+      });
+    return false;
+  }
+</script>
+</body>
+</html>
